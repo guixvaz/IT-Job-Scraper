@@ -1,0 +1,14 @@
+# .gitignore
+venv/
+env/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Database
+jobs.db
+*.sqlite3
+
+# Playwright / IDE
+.vscode/
+playwright-report/
