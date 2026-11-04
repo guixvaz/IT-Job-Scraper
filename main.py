@@ -12,7 +12,8 @@ def main():
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=False) 
-        page = browser.new_page()
+        context = browser.new_context()
+        page = context.new_page()
 
         scraper = ScraperFactory.get_scraper("jobs.ch", page)
         scraped_jobs = scraper.scrape()

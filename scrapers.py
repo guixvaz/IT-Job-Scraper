@@ -3,12 +3,14 @@ from abc import ABC, abstractmethod
 from typing import List
 from playwright.sync_api import Page
 from db import JobListing
+from evaluator import GeminiEvaluator
 
 class JobScraper(ABC):
     def __init__(self, page: Page, max_workload: int = 60):
         self.page = page
         self.max_workload = max_workload
         self.keywords = ["Werkstudent IT", "Praktikum IT", "IT Support"]
+        self.evaluator = GeminiEvaluator()
 
     @abstractmethod
     def scrape(self) -> List[JobListing]:
@@ -29,12 +31,29 @@ class JobScraper(ABC):
         return min_workload <= self.max_workload
 
 class JobsChScraper(JobScraper):
+
+    def fetch_description_text(self, url: str) -> str:
+        """Platform-specific logic to extract description text from jobs.ch."""
+        detail_page = None
+        try:
+            detail_page = self.page.context.new_page()
+            detail_page.goto(url)
+            detail_page.wait_for_load_state("domcontentloaded")
+            text = detail_page.locator("body").inner_text()
+            return text
+        except Exception as e:
+            print(f"    -> ERROR loading page for description: {e}")
+            return ""
+        finally:
+            if detail_page and not detail_page.is_closed():
+                detail_page.close()
+
     def scrape(self) -> List[JobListing]:
         jobs = []
         for keyword in self.keywords:
             formatted_keyword = keyword.replace(" ", "%20")
             page_num = 1
-            max_pages = 10  # Safety limit so it doesn't run forever
+            max_pages = 15  # Safety limit so it doesn't run forever
 
             while page_num <= max_pages:
                 # Add the page parameter to the URL
@@ -86,18 +105,24 @@ class JobsChScraper(JobScraper):
                         location_locator = card.locator("span:has-text('Place of work:') + p")
                         location = location_locator.first.inner_text() if location_locator.count() > 0 else "Unknown"
 
-                        # 3. Apply the 60% FHNW workload filter
+                        # 3. Check workload and evaluate description
                         if self.is_workload_acceptable(workload_text):
-                            job = JobListing(
-                                job_id=job_id,
-                                title=title,
-                                company=company,
-                                location=location,
-                                workload=workload_text,
-                                url=full_url,
-                                platform="jobs.ch"
-                            )
-                            jobs.append(job)
+                            print(f"Found Job: '{title}' | Workload: {workload_text}")
+                            print("  -> Workload ACCEPTED. Scanning full description for qualifications...")
+                            
+                            description_text = self.fetch_description_text(full_url)
+                            
+                            if description_text and self.evaluator.evaluate(description_text):
+                                job = JobListing(
+                                    job_id=job_id,
+                                    title=title or "No Title",
+                                    company=company,
+                                    location=location,
+                                    workload=workload_text,
+                                    url=full_url,
+                                    platform="jobs.ch"
+                                )
+                                jobs.append(job)
                             
                     except Exception as e:
                         print(f"  -> ERROR parsing this card: {e}")
