@@ -28,6 +28,7 @@ def main():
                     new_jobs_found.append({
                         "title": job.title,
                         "company": job.company,
+                        "location": job.location,
                         "workload": job.workload,
                         "url": job.url
                     })
@@ -37,15 +38,30 @@ def main():
 
     # Terminal UI
     if new_jobs_found:
-        table = Table(title="New IT Opportunities (Max 60%)")
-        table.add_column("Title", style="cyan", no_wrap=True)
-        table.add_column("Company", style="magenta")
-        table.add_column("Workload", style="yellow")
-        table.add_column("Link", style="blue")
+        # Create a professional, spaced-out table
+        table = Table(
+            title="New IT Student Opportunities (Max 60%)",
+            show_header=True, 
+            header_style="bold magenta",
+            padding=(1, 2) # Adds horizontal breathing room between columns
+        )
+        
+        # Enforce max_width and overflow="ellipsis" to prevent text from breaking the layout
+        table.add_column("Title (Ctrl+Click to open)", style="cyan", max_width=150, overflow="ellipsis")
+        table.add_column("Company", style="white", max_width=25, overflow="ellipsis")
+        table.add_column("Location", style="dim", max_width=20, overflow="ellipsis")
+        table.add_column("Workload", style="yellow", justify="right")
 
         for job in new_jobs_found:
-            # We now access dictionary keys instead of database object attributes
-            table.add_row(job["title"][:30] + "...", job["company"][:20], job["workload"], job["url"])
+            # This rich syntax turns the title into a clickable hyperlink in VS Code / modern terminals!
+            clickable_title = f"[link={job['url']}]{job['title']}[/link]"
+            
+            table.add_row(
+                clickable_title, 
+                job["company"], 
+                job["location"], 
+                job["workload"]
+            )
 
         console.print(table)
     else:
