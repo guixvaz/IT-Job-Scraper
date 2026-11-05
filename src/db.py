@@ -1,3 +1,4 @@
+import os
 from sqlmodel import Field, SQLModel, create_engine, Session
 
 class JobListing(SQLModel, table=True):
@@ -11,7 +12,8 @@ class JobListing(SQLModel, table=True):
     platform: str
 
 # Create local SQLite database
-sqlite_file_name = "jobs.db"
+os.makedirs("data", exist_ok=True)
+sqlite_file_name = "data/jobs.db"
 sqlite_url = f"sqlite:///{sqlite_file_name}"
 engine = create_engine(sqlite_url, echo=True) # echo=True prints SQL commands to terminal for debugging
 
