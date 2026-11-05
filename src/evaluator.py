@@ -18,31 +18,66 @@ class GeminiEvaluator:
         if not api_key:
             raise ValueError("GEMINI_API_KEY not found in .env file")
         self.client = genai.Client(api_key=api_key)
+
+        # Load the profile dynamically from the markdown file
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        profile_path = os.path.join(base_dir, "candidate_profile.md")
         
-        self.system_prompt = """
+        try:
+            with open(profile_path, "r", encoding="utf-8") as f:
+                candidate_profile = f.read()
+        except FileNotFoundError:
+            candidate_profile = "Candidate profile not found."
+
+        self.system_prompt = f"""
         You are an IT recruiter evaluating a job description against a candidate's profile.
-        The candidate is a part-time Wirtschaftsinformatik student at FHNW.
-        Candidate Skills:
-        - Work Experience: No professional experience yet, but has completed several IT-related projects during studies aswell as personal projects.
-        - Education: Currently pursuing a degree in Wirtschaftsinformatik (Business Informatics) at FHNW.
-        - Tech: Python, FastAPI, SQLModel, SQLite, MySQL, Docker, Git, REST APIs
-        - Design Patterns: MVC, GoF patterns
-        - Analysis: Requirements Engineering, BPMN 2.0, UML
-        - Languages: Native Portuguese, fluent German and English, basic French
+        
+        Candidate Profile:
+        {candidate_profile}
 
         Determine if the candidate has at least a 60% partial match with the core requirements.
         Ignore workload percentage and location, as those are filtered elsewhere.
         """
 
+    def clean_job_description(self, text: str) -> str:
+        """Strips out boilerplate and limits text length to reduce token usage."""
+
+        if not text:
+            return ""
+            
+        # 1. Truncate extreme length (e.g., cap at 4000 characters ~ 1000 tokens)
+        max_chars = 4000
+        if len(text) > max_chars:
+            text = text[:max_chars]
+            
+        # 2. Strip common boilerplate sections that don't contain requirements
+        # Splitting at these markers drops the footer text (benefits, EEO statements, contact info)
+        boilerplate_markers = [
+            "Wir bieten", 
+            "Unser Angebot",
+            "What we offer",
+            "Benefits",
+            "Equal Opportunity Employer",
+            "Wir freuen uns auf deine Bewerbung"
+        ]
+        
+        for marker in boilerplate_markers:
+            if marker in text:
+                text = text.split(marker)[0]
+                
+        return text.strip()
+
     def evaluate(self, job_description: str) -> bool:
         """Analyzes a job description string and returns True if it matches the profile."""
+
+        cleaned_description = self.clean_job_description(job_description)
         max_retries = 3
 
         for attempt in range(max_retries):
             try:
                 response = self.client.models.generate_content(
                     model='gemini-3.5-flash-lite',
-                    contents=f"Job Description:\n{job_description}",
+                    contents=f"Job Description:\n{cleaned_description}",
                     config=types.GenerateContentConfig(
                         system_instruction=self.system_prompt,
                         response_mime_type="application/json",
@@ -52,6 +87,10 @@ class GeminiEvaluator:
                 )
 
                 result = response.parsed
+
+                if not isinstance(result, JobMatchResult):
+                    print("    -> API ERROR: Unexpected response format")
+                    return True
 
                 if result.is_match:
                     print(f"    -> GEMINI MATCHED: {result.reasoning}")
