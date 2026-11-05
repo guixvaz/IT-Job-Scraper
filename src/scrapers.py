@@ -2,8 +2,8 @@ import re
 from abc import ABC, abstractmethod
 from typing import List
 from playwright.sync_api import Page
-from db import JobListing
-from evaluator import GeminiEvaluator
+from src.db import JobListing
+from src.evaluator import GeminiEvaluator
 
 class JobScraper(ABC):
     def __init__(self, page: Page, max_workload: int = 60):

@@ -1,9 +1,9 @@
+from src.scrapers import ScraperFactory
+from src.db import create_db_and_tables, engine, JobListing
 from playwright.sync_api import sync_playwright
 from sqlmodel import Session, select
 from rich.console import Console
 from rich.table import Table
-from scrapers import ScraperFactory
-from db import create_db_and_tables, engine, JobListing
 
 def main():
     create_db_and_tables()
