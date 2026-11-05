@@ -13,7 +13,7 @@ def index_page():
     # Header
     with ui.row().classes('w-full items-center justify-between p-4 bg-slate-800 text-white shadow-lg'):
         ui.label('IT Student Job Dashboard').classes('text-2xl font-bold')
-        ui.button('Refresh', on_click=lambda: ui.open('/')).classes('bg-blue-600')
+        ui.button('Refresh', on_click=lambda: ui.navigate.to('/')).classes('bg-blue-600')
 
     # Job Grid
     with ui.row().classes('w-full flex-wrap gap-6 p-6 bg-slate-50 min-h-screen'):
